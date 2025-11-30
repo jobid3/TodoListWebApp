@@ -1,65 +1,348 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
-<head><title>Major Task</title></head>
-<body>
-  <p><a href="{% url 'tasks' %}">← Back to Major Tasks</a></p>
+<head>
+  <title>{{ major_task.title }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body class="padded">
+  <div class="container">
+    <a href="{% url 'tasks' %}" class="back-link">← Back to Tasks</a>
 
-  <h1>{{ major_task.title }}</h1>
-  <p>{{ major_task.description|linebreaksbr }}</p>
-  <p>Status: {% if major_task.is_completed %}Completed{% else %}Open{% endif %}</p>
+    <div class="card">
+      <div class="header" style="margin-bottom: 16px;">
+        <h1 id="task-title" style="margin-bottom: 0;">{{ major_task.title }}</h1>
+        <span id="task-status" class="status {% if major_task.is_completed %}completed{% else %}open{% endif %}">
+          {% if major_task.is_completed %}Completed{% else %}Open{% endif %}
+        </span>
+      </div>
 
-  <h3>Edit Major Task</h3>
-  <form method="post" action="{% url 'task_update' major_task.user_task_id %}">
-    {% csrf_token %}
-    <div><label>Title <input type="text" name="title" value="{{ major_task.title }}"/></label></div>
-    <div><label>Description <textarea name="description">{{ major_task.description }}</textarea></label></div>
-    <div><label><input type="checkbox" name="is_completed" {% if major_task.is_completed %}checked{% endif %}/> Completed</label></div>
-    <button type="submit">Save</button>
-  </form>
+      <div id="task-description-display" class="description-box" {% if not major_task.description %}style="display: none;"{% endif %}>
+        {{ major_task.description|linebreaksbr }}
+      </div>
 
-  <hr/>
-  <h2>Subtasks</h2>
-  <form method="post" action="{% url 'subtask_create' major_task.user_task_id %}">
-    {% csrf_token %}
-    <div><label>Title <input type="text" name="title"/></label></div>
-    <div><label>Description <textarea name="description"></textarea></label></div>
-    <button type="submit">Add Subtask</button>
-  </form>
-
-  <ul>
-    {% for st in subtasks %}
-    <li>
-      <strong>{{ st.title }}</strong>
-      {% if st.is_completed %}<em>(completed)</em>{% endif %}
-      <p>{{ st.description|linebreaksbr }}</p>
-      
-      <form method="post" action="{% url 'subtask_delete' major_task.user_task_id st.pk %}" style="display:inline">
+      <h3 class="section-title">Edit Task</h3>
+      <form id="edit-task-form">
         {% csrf_token %}
-        <button type="submit">Delete</button>
+        <div class="form-group">
+          <label for="title">Title</label>
+          <input type="text" name="title" id="title" value="{{ major_task.title }}" required />
+        </div>
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea name="description" id="description">{{ major_task.description }}</textarea>
+        </div>
+        <div class="form-group checkbox-group">
+          <input type="checkbox" name="is_completed" id="is_completed" {% if major_task.is_completed %}checked{% endif %} />
+          <label for="is_completed">Mark as completed</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <span id="save-status" class="save-status"></span>
       </form>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">Subtasks</h2>
       
-      <form method="post" action="{% url 'subtask_update' major_task.user_task_id st.pk %}" style="display:inline">
+      <form id="add-subtask-form">
         {% csrf_token %}
-        <input type="hidden" name="title" value="{{ st.title }}"/>
-        <input type="hidden" name="description" value="{{ st.description }}"/>
-        <input type="hidden" name="is_completed" value="{% if not st.is_completed %}on{% endif %}"/>
-        <button type="submit">{% if st.is_completed %}Mark Open{% else %}Mark Done{% endif %}</button>
+        <div class="form-group">
+          <label for="subtask_title">Title</label>
+          <input type="text" name="title" id="subtask_title" placeholder="Add a new subtask..." required />
+        </div>
+        <div class="form-group">
+          <label for="subtask_description">Description (optional)</label>
+          <textarea name="description" id="subtask_description" placeholder="Add more details..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Subtask</button>
       </form>
+
+      <ul id="subtasks-list" class="task-list" style="margin-top: 24px;">
+        {% for st in subtasks %}
+          <li class="subtask-item" data-subtask-id="{{ st.pk }}">
+            <div class="subtask-header">
+              <span class="subtask-title">
+                <span class="subtask-title-text">{{ st.title }}</span>
+                <span class="status {% if st.is_completed %}completed{% else %}open{% endif %}">
+                  {% if st.is_completed %}Done{% else %}Open{% endif %}
+                </span>
+              </span>
+              <div class="subtask-actions">
+                <button 
+                  type="button" 
+                  class="btn btn-sm {% if st.is_completed %}btn-warning{% else %}btn-success{% endif %} toggle-subtask"
+                  data-url="{% url 'subtask_update' major_task.user_task_id st.pk %}"
+                  data-completed="{% if st.is_completed %}true{% else %}false{% endif %}"
+                >
+                  {% if st.is_completed %}Mark Open{% else %}Mark Done{% endif %}
+                </button>
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-danger delete-subtask"
+                  data-url="{% url 'subtask_delete' major_task.user_task_id st.pk %}"
+                  data-title="{{ st.title }}"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+            
+            <p class="subtask-description" {% if not st.description %}style="display: none;"{% endif %}>
+              {{ st.description|linebreaksbr }}
+            </p>
+
+            <details class="edit-details">
+              <summary>Edit subtask</summary>
+              <form class="edit-subtask-form" data-url="{% url 'subtask_update' major_task.user_task_id st.pk %}">
+                <div class="form-group">
+                  <label>Title</label>
+                  <input type="text" name="title" value="{{ st.title }}" required />
+                </div>
+                <div class="form-group">
+                  <label>Description</label>
+                  <textarea name="description">{{ st.description }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                <span class="save-status"></span>
+              </form>
+            </details>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <div id="empty-state" class="empty-state inline" {% if subtasks %}style="display: none;"{% endif %}>
+        <div class="empty-state-icon">📋</div>
+        <p>No subtasks yet. Add one above!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal">
+    <div class="modal-content">
+      <h2>Delete Subtask?</h2>
+      <p>Are you sure you want to delete "<span id="delete-subtask-title"></span>"?</p>
+      <p class="modal-warning">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancel-delete">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const csrfToken = '{{ csrf_token }}';
+    const subtaskCreateUrl = "{% url 'subtask_create' major_task.user_task_id %}";
+    const taskUpdateUrl = "{% url 'task_update' major_task.user_task_id %}";
+    
+    let deleteUrl = null;
+    let deleteSubtaskItem = null;
+
+    // Helper function for POST requests
+    async function postForm(url, formData) {
+      formData.append('csrfmiddlewaretoken', csrfToken);
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData
+      });
+      return response;
+    }
+
+    // Show save status
+    function showStatus(element, message, isError = false) {
+      element.textContent = message;
+      element.style.color = isError ? '#dc2626' : '#10b981';
+      setTimeout(() => { element.textContent = ''; }, 2000);
+    }
+
+    // Save Task Changes
+    document.getElementById('edit-task-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const statusEl = document.getElementById('save-status');
       
-      <details>
-        <summary>Edit</summary>
-        <form method="post" action="{% url 'subtask_update' major_task.user_task_id st.pk %}">
-          {% csrf_token %}
-          <div><label>Title <input type="text" name="title" value="{{ st.title }}"/></label></div>
-          <div><label>Description <textarea name="description">{{ st.description }}</textarea></label></div>
-          <input type="hidden" name="is_completed" value="{% if st.is_completed %}on{% endif %}"/>
-          <button type="submit">Save</button>
-        </form>
-      </details>
-    </li>
-    {% empty %}
-      <li>No subtasks yet.</li>
-    {% endfor %}
-  </ul>
+      try {
+        const response = await postForm(taskUpdateUrl, formData);
+        if (response.ok) {
+          // Update display
+          document.getElementById('task-title').textContent = formData.get('title');
+          
+          const descDisplay = document.getElementById('task-description-display');
+          const desc = formData.get('description');
+          descDisplay.innerHTML = desc.replace(/\n/g, '<br>');
+          descDisplay.style.display = desc ? 'block' : 'none';
+          
+          const isCompleted = formData.has('is_completed');
+          const statusBadge = document.getElementById('task-status');
+          statusBadge.textContent = isCompleted ? 'Completed' : 'Open';
+          statusBadge.className = 'status ' + (isCompleted ? 'completed' : 'open');
+          
+          showStatus(statusEl, '✓ Saved!');
+        } else {
+          showStatus(statusEl, '✗ Error saving', true);
+        }
+      } catch (error) {
+        showStatus(statusEl, '✗ Error saving', true);
+      }
+    });
+
+    // Add Subtask
+    document.getElementById('add-subtask-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      
+      try {
+        const response = await postForm(subtaskCreateUrl, formData);
+        if (response.ok) {
+          // Reload to get new subtask with correct ID
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    });
+
+    // Toggle Subtask Status
+    function setupToggleButtons() {
+      document.querySelectorAll('.toggle-subtask').forEach(button => {
+        button.addEventListener('click', async function() {
+          const url = this.dataset.url;
+          const isCompleted = this.dataset.completed === 'true';
+          const subtaskItem = this.closest('.subtask-item');
+          const titleText = subtaskItem.querySelector('.subtask-title-text').textContent;
+          const descText = subtaskItem.querySelector('.subtask-description').textContent.trim();
+          
+          const formData = new FormData();
+          formData.append('title', titleText);
+          formData.append('description', descText);
+          if (!isCompleted) {
+            formData.append('is_completed', 'on');
+          }
+
+          try {
+            const response = await postForm(url, formData);
+            if (response.ok) {
+              const newCompleted = !isCompleted;
+              this.dataset.completed = newCompleted.toString();
+              this.textContent = newCompleted ? 'Mark Open' : 'Mark Done';
+              this.classList.toggle('btn-success', !newCompleted);
+              this.classList.toggle('btn-warning', newCompleted);
+              
+              const statusBadge = subtaskItem.querySelector('.status');
+              statusBadge.textContent = newCompleted ? 'Done' : 'Open';
+              statusBadge.classList.toggle('completed', newCompleted);
+              statusBadge.classList.toggle('open', !newCompleted);
+            }
+          } catch (error) {
+            console.error('Error:', error);
+          }
+        });
+      });
+    }
+
+    // Delete Subtask - Show Modal
+    function setupDeleteButtons() {
+      document.querySelectorAll('.delete-subtask').forEach(button => {
+        button.addEventListener('click', function() {
+          deleteUrl = this.dataset.url;
+          deleteSubtaskItem = this.closest('.subtask-item');
+          document.getElementById('delete-subtask-title').textContent = this.dataset.title;
+          document.getElementById('delete-modal').classList.add('show');
+        });
+      });
+    }
+
+    // Cancel Delete
+    document.getElementById('cancel-delete').addEventListener('click', function() {
+      document.getElementById('delete-modal').classList.remove('show');
+      deleteUrl = null;
+      deleteSubtaskItem = null;
+    });
+
+    // Confirm Delete
+    document.getElementById('confirm-delete').addEventListener('click', async function() {
+      if (!deleteUrl || !deleteSubtaskItem) return;
+      
+      const formData = new FormData();
+      
+      try {
+        const response = await postForm(deleteUrl, formData);
+        if (response.ok) {
+          deleteSubtaskItem.remove();
+          document.getElementById('delete-modal').classList.remove('show');
+          
+          // Show empty state if no subtasks left
+          const remaining = document.querySelectorAll('.subtask-item');
+          if (remaining.length === 0) {
+            document.getElementById('empty-state').style.display = 'block';
+          }
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+      
+      deleteUrl = null;
+      deleteSubtaskItem = null;
+    });
+
+    // Close modal on background click
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.classList.remove('show');
+        deleteUrl = null;
+        deleteSubtaskItem = null;
+      }
+    });
+
+    // Edit Subtask
+    function setupEditForms() {
+      document.querySelectorAll('.edit-subtask-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          const url = this.dataset.url;
+          const formData = new FormData(this);
+          const subtaskItem = this.closest('.subtask-item');
+          const statusEl = this.querySelector('.save-status');
+          
+          // Preserve completion status
+          const toggleBtn = subtaskItem.querySelector('.toggle-subtask');
+          if (toggleBtn.dataset.completed === 'true') {
+            formData.append('is_completed', 'on');
+          }
+          
+          try {
+            const response = await postForm(url, formData);
+            if (response.ok) {
+              // Update displayed title
+              subtaskItem.querySelector('.subtask-title-text').textContent = formData.get('title');
+              
+              // Update delete button data-title
+              subtaskItem.querySelector('.delete-subtask').dataset.title = formData.get('title');
+              
+              // Update displayed description
+              const descEl = subtaskItem.querySelector('.subtask-description');
+              const desc = formData.get('description');
+              descEl.innerHTML = desc.replace(/\n/g, '<br>');
+              descEl.style.display = desc ? 'block' : 'none';
+              
+              // Close details
+              this.closest('details').removeAttribute('open');
+              
+              showStatus(statusEl, '✓ Saved!');
+            } else {
+              showStatus(statusEl, '✗ Error', true);
+            }
+          } catch (error) {
+            showStatus(statusEl, '✗ Error', true);
+          }
+        });
+      });
+    }
+
+    // Initialize all handlers
+    setupToggleButtons();
+    setupDeleteButtons();
+    setupEditForms();
+  </script>
 </body>
 </html>

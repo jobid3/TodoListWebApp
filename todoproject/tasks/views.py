@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from .forms import RegistrationForm, MajorTaskForm, SubTaskForm
 from .models import MajorTask, SubTask
+from django.db.models import Count, Q
 
 def home(request):
     return redirect('tasks') if request.user.is_authenticated else redirect('login')
@@ -20,8 +21,16 @@ def tasks(request):
             return redirect('tasks')
     else:
         form = MajorTaskForm()
-    major_tasks = MajorTask.objects.filter(user=request.user)
-    return render(request, 'tasks/major_tasks_list.html', {'form': form, 'major_tasks': major_tasks})
+    
+    major_tasks = MajorTask.objects.filter(user=request.user).annotate(
+        subtask_count=Count('subtasks'),
+        completed_subtask_count=Count('subtasks', filter=Q(subtasks__is_completed=True))
+    )
+    
+    return render(request, 'tasks/major_tasks_list.html', {
+        'major_tasks': major_tasks,
+        'form': form
+    })
 
 @login_required
 def task_detail(request, user_task_id):

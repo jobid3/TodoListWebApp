@@ -1,32 +1,201 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
-<head><title>Your Major Tasks</title></head>
-<body>
-  <h1>Major Tasks</h1>
-  <form method="post" action="{% url 'tasks' %}">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    <div>{{ form.title.label_tag }} {{ form.title }}</div>
-    <div>{{ form.description.label_tag }} {{ form.description }}</div>
-    <div>{{ form.is_completed.label_tag }} {{ form.is_completed }}</div>
-    <button type="submit">Add Major Task</button>
-  </form>
-  <hr/>
-  <ul>
-    {% for mt in major_tasks %}
-      <li>
-        <a href="{% url 'task_detail' mt.user_task_id %}">{{ mt.title }}</a>
-        {% if mt.is_completed %}<em>(completed)</em>{% endif %}
-        <form method="post" action="{% url 'task_delete' mt.user_task_id %}" style="display:inline">
-          {% csrf_token %}
-          <button type="submit">Delete</button>
-        </form>
-        <a href="{% url 'task_detail' mt.user_task_id %}">Edit</a>
-      </li>
-    {% empty %}
-      <li>No major tasks yet.</li>
-    {% endfor %}
-  </ul>
-  <p><a href="{% url 'logout' %}">Logout</a></p>
+<head>
+  <title>Your Tasks</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body class="padded">
+  <div class="container">
+    <div class="header">
+      <h1 class="white" style="margin-bottom: 0;">My Tasks</h1>
+      <a href="{% url 'logout' %}" class="btn btn-ghost">Logout</a>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">Add New Task</h2>
+      <form method="post" action="{% url 'tasks' %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="title">Title</label>
+          <input type="text" name="title" id="title" placeholder="What do you need to do?" required />
+        </div>
+        <div class="form-group">
+          <label for="description">Description (optional)</label>
+          <textarea name="description" id="description" placeholder="Add more details..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Task</button>
+      </form>
+    </div>
+
+    {% if major_tasks %}
+      <ul class="task-list">
+        {% for mt in major_tasks %}
+          <li class="task-item" data-task-id="{{ mt.user_task_id }}">
+            <div class="task-info">
+              <a href="{% url 'task_detail' mt.user_task_id %}" class="task-title">{{ mt.title }}</a>
+              <span class="status {% if mt.is_completed %}completed{% else %}open{% endif %}">
+                {% if mt.is_completed %}Completed{% else %}Open{% endif %}
+              </span>
+              {% if mt.subtask_count > 0 %}
+                <span class="subtask-counter">{{ mt.completed_subtask_count }}/{{ mt.subtask_count }}</span>
+              {% endif %}
+            </div>
+            <div class="task-actions">
+              <button 
+                type="button" 
+                class="btn btn-sm {% if mt.is_completed %}btn-warning{% else %}btn-success{% endif %} toggle-task"
+                data-url="{% url 'task_update' mt.user_task_id %}"
+                data-title="{{ mt.title }}"
+                data-description="{{ mt.description }}"
+                data-completed="{% if mt.is_completed %}true{% else %}false{% endif %}"
+              >
+                {% if mt.is_completed %}Mark Open{% else %}Mark Done{% endif %}
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-danger delete-task"
+                data-url="{% url 'task_delete' mt.user_task_id %}"
+                data-title="{{ mt.title }}"
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="card empty-state">
+        <div class="empty-state-icon">📝</div>
+        <h2>No tasks yet</h2>
+        <p>Add your first task above to get started!</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal">
+    <div class="modal-content">
+      <h2>Delete Task?</h2>
+      <p>Are you sure you want to delete "<span id="delete-task-title"></span>"?</p>
+      <p class="modal-warning">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancel-delete">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const csrfToken = '{{ csrf_token }}';
+    let deleteUrl = null;
+    let deleteTaskItem = null;
+
+    // Helper function for POST requests
+    async function postForm(url, formData) {
+      formData.append('csrfmiddlewaretoken', csrfToken);
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData
+      });
+      return response;
+    }
+
+    // Toggle Task Status
+    document.querySelectorAll('.toggle-task').forEach(button => {
+      button.addEventListener('click', async function() {
+        const url = this.dataset.url;
+        const title = this.dataset.title;
+        const description = this.dataset.description;
+        const isCompleted = this.dataset.completed === 'true';
+        
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        if (!isCompleted) {
+          formData.append('is_completed', 'on');
+        }
+
+        try {
+          const response = await postForm(url, formData);
+          if (response.ok) {
+            const newCompleted = !isCompleted;
+            this.dataset.completed = newCompleted.toString();
+            this.textContent = newCompleted ? 'Mark Open' : 'Mark Done';
+            this.classList.toggle('btn-success', !newCompleted);
+            this.classList.toggle('btn-warning', newCompleted);
+            
+            const taskItem = this.closest('.task-item');
+            const statusBadge = taskItem.querySelector('.status');
+            statusBadge.textContent = newCompleted ? 'Completed' : 'Open';
+            statusBadge.classList.toggle('completed', newCompleted);
+            statusBadge.classList.toggle('open', !newCompleted);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      });
+    });
+
+    // Delete Task - Show Modal
+    document.querySelectorAll('.delete-task').forEach(button => {
+      button.addEventListener('click', function() {
+        deleteUrl = this.dataset.url;
+        deleteTaskItem = this.closest('.task-item');
+        document.getElementById('delete-task-title').textContent = this.dataset.title;
+        document.getElementById('delete-modal').classList.add('show');
+      });
+    });
+
+    // Cancel Delete
+    document.getElementById('cancel-delete').addEventListener('click', function() {
+      document.getElementById('delete-modal').classList.remove('show');
+      deleteUrl = null;
+      deleteTaskItem = null;
+    });
+
+    // Confirm Delete
+    document.getElementById('confirm-delete').addEventListener('click', async function() {
+      if (!deleteUrl || !deleteTaskItem) return;
+      
+      const formData = new FormData();
+      
+      try {
+        const response = await postForm(deleteUrl, formData);
+        if (response.ok) {
+          deleteTaskItem.remove();
+          document.getElementById('delete-modal').classList.remove('show');
+          
+          // Show empty state if no tasks left
+          const remaining = document.querySelectorAll('.task-item');
+          if (remaining.length === 0) {
+            document.querySelector('.task-list').remove();
+            const emptyState = document.createElement('div');
+            emptyState.className = 'card empty-state';
+            emptyState.innerHTML = `
+              <div class="empty-state-icon">📝</div>
+              <h2>No tasks yet</h2>
+              <p>Add your first task above to get started!</p>
+            `;
+            document.querySelector('.container').appendChild(emptyState);
+          }
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+      
+      deleteUrl = null;
+      deleteTaskItem = null;
+    });
+
+    // Close modal on background click
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.classList.remove('show');
+        deleteUrl = null;
+        deleteTaskItem = null;
+      }
+    });
+  </script>
 </body>
 </html>
