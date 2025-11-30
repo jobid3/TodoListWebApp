@@ -15,17 +15,17 @@ def tasks(request):
         form = MajorTaskForm(request.POST)
         if form.is_valid():
             mt = form.save(commit=False)
-            mt.owner = request.user
+            mt.user = request.user
             mt.save()
             return redirect('tasks')
     else:
         form = MajorTaskForm()
-    major_tasks = MajorTask.objects.filter(owner=request.user)
+    major_tasks = MajorTask.objects.filter(user=request.user)
     return render(request, 'tasks/major_tasks_list.html', {'form': form, 'major_tasks': major_tasks})
 
 @login_required
-def task_detail(request, pk):
-    major_task = get_object_or_404(MajorTask, pk=pk, owner=request.user)
+def task_detail(request, user_task_id):
+    major_task = get_object_or_404(MajorTask, user=request.user, user_task_id=user_task_id)
     return render(
         request,
         'tasks/major_task_detail.html',
@@ -38,20 +38,20 @@ def task_detail(request, pk):
     )
 
 @login_required
-def task_update(request, pk):
+def task_update(request, user_task_id):
+    major_task = get_object_or_404(MajorTask, user=request.user, user_task_id=user_task_id)
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
-    major_task = get_object_or_404(MajorTask, pk=pk, owner=request.user)
     form = MajorTaskForm(request.POST, instance=major_task)
     if form.is_valid():
         form.save()
-    return redirect('task_detail', pk=pk)
+    return redirect('task_detail', user_task_id=user_task_id)
 
 @login_required
-def task_delete(request, pk):
+def task_delete(request, user_task_id):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
-    major_task = get_object_or_404(MajorTask, pk=pk, owner=request.user)
+    major_task = get_object_or_404(MajorTask, user=request.user, user_task_id=user_task_id)
     major_task.delete()
     return redirect('tasks')
 
@@ -59,33 +59,33 @@ def task_delete(request, pk):
 def subtask_create(request, task_pk):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
-    major_task = get_object_or_404(MajorTask, pk=task_pk, owner=request.user)
+    major_task = get_object_or_404(MajorTask, user_task_id=task_pk, user=request.user)
     form = SubTaskForm(request.POST)
     if form.is_valid():
         st = form.save(commit=False)
         st.major_task = major_task
         st.save()
-    return redirect('task_detail', pk=task_pk)
+    return redirect('task_detail', user_task_id=task_pk)
 
 @login_required
 def subtask_update(request, task_pk, pk):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
-    major_task = get_object_or_404(MajorTask, pk=task_pk, owner=request.user)
+    major_task = get_object_or_404(MajorTask, user_task_id=task_pk, user=request.user)
     subtask = get_object_or_404(SubTask, pk=pk, major_task=major_task)
     form = SubTaskForm(request.POST, instance=subtask)
     if form.is_valid():
         form.save()
-    return redirect('task_detail', pk=task_pk)
+    return redirect('task_detail', user_task_id=task_pk)
 
 @login_required
 def subtask_delete(request, task_pk, pk):
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
-    major_task = get_object_or_404(MajorTask, pk=task_pk, owner=request.user)
+    major_task = get_object_or_404(MajorTask, user_task_id=task_pk, user=request.user)
     subtask = get_object_or_404(SubTask, pk=pk, major_task=major_task)
     subtask.delete()
-    return redirect('task_detail', pk=task_pk)
+    return redirect('task_detail', user_task_id=task_pk)
 
 def login(request):
     if request.user.is_authenticated:

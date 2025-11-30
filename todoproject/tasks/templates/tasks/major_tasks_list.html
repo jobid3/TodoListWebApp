@@ -15,13 +15,13 @@
   <ul>
     {% for mt in major_tasks %}
       <li>
-        <a href="{% url 'task_detail' mt.pk %}">{{ mt.title }}</a>
+        <a href="{% url 'task_detail' mt.user_task_id %}">{{ mt.title }}</a>
         {% if mt.is_completed %}<em>(completed)</em>{% endif %}
-        <form method="post" action="{% url 'task_delete' mt.pk %}" style="display:inline">
+        <form method="post" action="{% url 'task_delete' mt.user_task_id %}" style="display:inline">
           {% csrf_token %}
           <button type="submit">Delete</button>
         </form>
-        <a href="{% url 'task_update' mt.pk %}">Edit</a>
+        <a href="{% url 'task_detail' mt.user_task_id %}">Edit</a>
       </li>
     {% empty %}
       <li>No major tasks yet.</li>
