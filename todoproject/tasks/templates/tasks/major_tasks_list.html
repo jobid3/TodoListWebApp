@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><title>Your Major Tasks</title></head>
+<body>
+  <h1>Major Tasks</h1>
+  <form method="post" action="{% url 'tasks' %}">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div>{{ form.title.label_tag }} {{ form.title }}</div>
+    <div>{{ form.description.label_tag }} {{ form.description }}</div>
+    <div>{{ form.is_completed.label_tag }} {{ form.is_completed }}</div>
+    <button type="submit">Add Major Task</button>
+  </form>
+  <hr/>
+  <ul>
+    {% for mt in major_tasks %}
+      <li>
+        <a href="{% url 'task_detail' mt.pk %}">{{ mt.title }}</a>
+        {% if mt.is_completed %}<em>(completed)</em>{% endif %}
+        <form method="post" action="{% url 'task_delete' mt.pk %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit">Delete</button>
+        </form>
+        <a href="{% url 'task_update' mt.pk %}">Edit</a>
+      </li>
+    {% empty %}
+      <li>No major tasks yet.</li>
+    {% endfor %}
+  </ul>
+  <p><a href="{% url 'logout' %}">Logout</a></p>
+</body>
+</html>

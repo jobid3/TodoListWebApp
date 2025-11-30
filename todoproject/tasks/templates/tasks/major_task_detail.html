@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head><title>Major Task</title></head>
+<body>
+  <p><a href="{% url 'tasks' %}">← Back to Major Tasks</a></p>
+
+  <h1>{{ major_task.title }}</h1>
+  <p>{{ major_task.description|linebreaksbr }}</p>
+  <p>Status: {% if major_task.is_completed %}Completed{% else %}Open{% endif %}</p>
+
+  <h3>Edit Major Task</h3>
+  <form method="post" action="{% url 'task_update' major_task.pk %}">
+    {% csrf_token %}
+    {% if edit_form %}{{ edit_form.non_field_errors }}{% endif %}
+    <div>{% if edit_form %}{{ edit_form.title.label_tag }} {{ edit_form.title }}{% else %}<input type="text" name="title" value="{{ major_task.title }}"/>{% endif %}</div>
+    <div>{% if edit_form %}{{ edit_form.description.label_tag }} {{ edit_form.description }}{% else %}<textarea name="description">{{ major_task.description }}</textarea>{% endif %}</div>
+    <div>{% if edit_form %}{{ edit_form.is_completed.label_tag }} {{ edit_form.is_completed }}{% else %}<label><input type="checkbox" name="is_completed" {% if major_task.is_completed %}checked{% endif %}/> Completed</label>{% endif %}</div>
+    <button type="submit">Save</button>
+  </form>
+
+  <hr/>
+  <h2>Subtasks</h2>
+  <form method="post" action="{% url 'subtask_create' major_task.pk %}">
+    {% csrf_token %}
+    {{ subtask_form.non_field_errors }}
+    <div>{{ subtask_form.title.label_tag }} {{ subtask_form.title }}</div>
+    <div>{{ subtask_form.description.label_tag }} {{ subtask_form.description }}</div>
+    <div>{{ subtask_form.is_completed.label_tag }} {{ subtask_form.is_completed }}</div>
+    <button type="submit">Add Subtask</button>
+  </form>
+
+  <ul>
+    {% for st in subtasks %}
+      <li>
+        <strong>{{ st.title }}</strong>
+        {% if st.is_completed %}<em>(completed)</em>{% endif %}
+        <div>{{ st.description|linebreaksbr }}</div>
+        <form method="post" action="{% url 'subtask_delete' major_task.pk st.pk %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit">Delete</button>
+        </form>
+        <form method="post" action="{% url 'subtask_update' major_task.pk st.pk %}" style="display:inline">
+          {% csrf_token %}
+          <input type="hidden" name="title" value="{{ st.title }}"/>
+          <input type="hidden" name="description" value="{{ st.description }}"/>
+          <input type="hidden" name="is_completed" value="{% if not st.is_completed %}on{% endif %}"/>
+          <button type="submit">{% if st.is_completed %}Mark Open{% else %}Mark Completed{% endif %}</button>
+        </form>
+        <details>
+          <summary>Edit</summary>
+          <form method="post" action="{% url 'subtask_update' major_task.pk st.pk %}">
+            {% csrf_token %}
+            <div><label>Title <input type="text" name="title" value="{{ st.title }}"/></label></div>
+            <div><label>Description <textarea name="description">{{ st.description }}</textarea></label></div>
+            <div><label><input type="checkbox" name="is_completed" {% if st.is_completed %}checked{% endif %}/> Completed</label></div>
+            <button type="submit">Save</button>
+          </form>
+        </details>
+      </li>
+    {% empty %}
+      <li>No subtasks yet.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>
