@@ -14,7 +14,6 @@ class MajorTask(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.user_task_id:
-            # Get the max user_task_id for this user and increment
             last_task = MajorTask.objects.filter(user=self.user).order_by('-user_task_id').first()
             self.user_task_id = (last_task.user_task_id + 1) if last_task else 1
         super().save(*args, **kwargs)

@@ -10,7 +10,11 @@
     <h1 style="text-align: center;">Welcome Back</h1>
     
     {% if form.non_field_errors %}
-      <div class="errors">{{ form.non_field_errors }}</div>
+      <div class="errors">
+        {% for error in form.non_field_errors %}
+          {{ error }}
+        {% endfor %}
+      </div>
     {% endif %}
     
     <form method="post">
