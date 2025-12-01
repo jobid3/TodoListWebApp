@@ -61,7 +61,7 @@
 
       <ul id="subtasks-list" class="task-list" style="margin-top: 24px;">
         {% for st in subtasks %}
-          <li class="subtask-item" data-subtask-id="{{ st.pk }}">
+          <li class="subtask-item" data-subtask-id="{{ st.task_subtask_id }}">
             <div class="subtask-header">
               <span class="subtask-title">
                 <span class="subtask-title-text">{{ st.title }}</span>
@@ -71,12 +71,12 @@
               </span>
               <div class="subtask-actions">
                 <button type="button" class="btn btn-sm {% if st.is_completed %}btn-warning{% else %}btn-success{% endif %} toggle-subtask"
-                  data-url="{% url 'subtask_update' major_task.user_task_id st.pk %}"
+                  data-url="{% url 'subtask_update' major_task.user_task_id st.task_subtask_id %}"
                   data-completed="{% if st.is_completed %}true{% else %}false{% endif %}">
                   {% if st.is_completed %}Mark Open{% else %}Mark Done{% endif %}
                 </button>
                 <button type="button" class="btn btn-sm btn-danger delete-subtask"
-                  data-url="{% url 'subtask_delete' major_task.user_task_id st.pk %}"
+                  data-url="{% url 'subtask_delete' major_task.user_task_id st.task_subtask_id %}"
                   data-title="{{ st.title }}">
                   Delete
                 </button>
@@ -89,7 +89,7 @@
 
             <details class="edit-details">
               <summary>Edit subtask</summary>
-              <form class="edit-subtask-form" data-url="{% url 'subtask_update' major_task.user_task_id st.pk %}">
+              <form class="edit-subtask-form" data-url="{% url 'subtask_update' major_task.user_task_id st.task_subtask_id %}">
                 <div class="form-group">
                   <label>Title</label>
                   <input type="text" name="title" value="{{ st.title }}" required />
