@@ -72,7 +72,7 @@ def subtask_create(request, user_task_id):
         if form.is_valid():
             st = form.save(commit=False)
             st.major_task = major_task
-            st.save()  # task_subtask_id auto-assigned
+            st.save()
     return redirect('task_detail', user_task_id=user_task_id)
 
 
