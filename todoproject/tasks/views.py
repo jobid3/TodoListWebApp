@@ -27,6 +27,9 @@ def tasks(request):
         completed_subtask_count=Count('subtasks', filter=Q(subtasks__is_completed=True))
     )
     
+    if request.user.is_superuser:
+        return render(request, 'tasks/admin_tasks.html', {'major_tasks': major_tasks})
+    
     return render(request, 'tasks/major_tasks_list.html', {
         'major_tasks': major_tasks,
         'form': form
@@ -101,7 +104,7 @@ def login(request):
     form = AuthenticationForm(request, data=request.POST or None)
     if request.method == 'POST' and form.is_valid():
         auth_login(request, form.get_user())
-        return redirect('tasks')
+        return redirect('tasks')    
     return render(request, 'login.html', {'form': form})
 
 def register(request):
